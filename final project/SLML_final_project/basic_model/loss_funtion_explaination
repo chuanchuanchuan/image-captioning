@@ -1,0 +1,35 @@
+''' reading:
+The output of the decoder is a sequence of one-hot encoded arrays. In order to train the decoder 
+we need to supply the one-hot encoded arrays that we desire to see on the decoder's output, and 
+then use a loss-function like cross-entropy to train the decoder to produce this desired output.
+
+However, our data-set contains integer-tokens instead of one-hot encoded arrays. Each one-hot 
+encoded array has 10000 elements so it would be extremely wasteful to convert the entire data-set 
+to one-hot encoded arrays. We could do this conversion from integers to one-hot arrays in the 
+batch_generator() above.
+
+A better way is to use a so-called sparse cross-entropy loss-function, which does the conversion 
+internally from integers to one-hot encoded arrays. Unfortunately, there seems to be a bug in 
+Keras when using this with Recurrent Neural Networks, so the following does not work:
+'''
+# decoder_model.compile(optimizer=optimizer,
+#                       loss='sparse_categorical_crossentropy')
+
+'''
+The decoder outputs a 3-rank tensor with shape [batch_size, sequence_length, num_words] which 
+contains batches of sequences of one-hot encoded arrays of length num_words. We will compare this 
+to a 2-rank tensor with shape [batch_size, sequence_length] containing sequences of integer-tokens.
+
+This comparison is done with a sparse-cross-entropy function directly from TensorFlow. There are 
+several things to note here.
+
+Firstly, the loss-function calculates the softmax internally to improve numerical accuracy - this 
+is why we used a linear activation function in the last dense-layer of the decoder-network above.
+
+Secondly, the loss-function from TensorFlow will output a 2-rank tensor of shape 
+[batch_size, sequence_length] given these inputs. But this must ultimately be reduced to a single 
+scalar-value whose gradient can be derived by TensorFlow so it can be optimized using gradient 
+descent. Keras supports some weighting of loss-values across the batch but the semantics are 
+unclear so to be sure that we calculate the loss-function across the entire batch and across the 
+entire sequences, we manually calculate the loss average.
+'''
